@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:quickmind/presentation/screens/auth/login_screen.dart';
-import 'package:quickmind/presentation/screens/auth/register_screen.dart';
-import 'package:quickmind/presentation/screens/new_game/new_game_screen.dart';
-import 'package:quickmind/storage/session_storage.dart';
-import 'package:quickmind/data/repositories/auth_repository.dart';
+import '../../../data/services/game_service.dart';
+import '../../../data/repositories/auth_repository.dart';
+import '../../screens/ready/ready_to_play_screen.dart';
+import '../auth/login_screen.dart';
+import '../auth/register_screen.dart';
+import '../../../storage/session_storage.dart';
 
 class WelcomeScreen extends StatelessWidget {
   final AuthRepository authRepository;
+  final GameService gameService;
 
   const WelcomeScreen({
     super.key,
     required this.authRepository,
+    required this.gameService,
   });
 
   @override
@@ -42,8 +45,12 @@ class WelcomeScreen extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () async {
+                      // Crear ID de invitado único
+                      final guestId = 'guest_${DateTime.now().millisecondsSinceEpoch}';
+                      final guestNickname = 'Invitado${guestId.substring(guestId.length - 4)}';
+                      
                       await SessionStorage.saveSession(
-                        userId: 'guest',
+                        userId: guestId,
                         isGuest: true,
                       );
 
@@ -52,7 +59,11 @@ class WelcomeScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const NewGameScreen(),
+                          builder: (_) => ReadyToPlayScreen(
+                            gameService: gameService,
+                            userId: guestId,
+                            nickname: guestNickname,
+                          ),
                         ),
                       );
                     },

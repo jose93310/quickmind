@@ -119,12 +119,16 @@ class _QuickMindAppState extends State<QuickMindApp> {
       darkTheme: ThemeData.dark(),
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
 
-      home: WelcomeScreen(authRepository: widget.authRepository),
+      home: WelcomeScreen(
+        authRepository: widget.authRepository,
+        gameService: widget.gameService,
+      ),
 
       routes: {
         '/home': (_) => HomeScreen(
               statsRepository: widget.statsRepository,
               roundsRepository: widget.roundsRepository,
+              gameService: widget.gameService,
             ),
       },
     );
