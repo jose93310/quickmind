@@ -15,6 +15,8 @@ import 'data/api/rounds_api.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/stats_repository.dart';
 import 'data/repositories/rounds_repository.dart';
+import 'data/services/game_hub_service.dart';
+import 'data/services/game_service.dart';
 import 'data/db/daos/stats_dao.dart';
 import 'data/db/daos/rounds_dao.dart';
 
@@ -45,12 +47,19 @@ void main() async {
   final statsRepository = StatsRepository(dao: StatsDao(db), api: statsApi);
   final roundsRepository = RoundsRepository(dao: RoundsDao(db), api: roundsApi);
 
+  // SignalR + GameService
+  final hubService = GameHubService();
+  final gameService = GameService(
+    gameApi: gameApi,
+    hubService: hubService,
+  );
+
   runApp(
     QuickMindApp(
       authRepository: authRepository,
       statsRepository: statsRepository,
       roundsRepository: roundsRepository,
-      gameApi: gameApi,
+      gameService: gameService,
     ),
   );
 }
@@ -59,14 +68,14 @@ class QuickMindApp extends StatefulWidget {
   final AuthRepository authRepository;
   final StatsRepository statsRepository;
   final RoundsRepository roundsRepository;
-  final GameApi gameApi;
+  final GameService gameService;
 
   const QuickMindApp({
     super.key,
     required this.authRepository,
     required this.statsRepository,
     required this.roundsRepository,
-    required this.gameApi,
+    required this.gameService,
   });
 
   @override
@@ -85,6 +94,12 @@ class _QuickMindAppState extends State<QuickMindApp> {
   Future<void> _loadTheme() async {
     final savedTheme = await ThemeStorage.loadThemeMode();
     setState(() => isDarkMode = savedTheme);
+  }
+
+  @override
+  void dispose() {
+    widget.gameService.dispose();
+    super.dispose();
   }
 
   @override

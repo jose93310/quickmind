@@ -1,12 +1,17 @@
 class ApiConstants {
+  // Base URL sin /api (para SignalR)
+  static const String serverUrl = 'http://localhost:5256';
+  
   // Para desarrollo local (emulador Android usa 10.0.2.2, iOS usa localhost)
-  static const String baseUrl = 'http://localhost:5256/api';
+  static const String baseUrl = '$serverUrl/api';
   
   // Para dispositivo físico, usa tu IP local:
-  // static const String baseUrl = 'http://192.168.1.100:5256/api';
+  // static const String serverUrl = 'http://192.168.1.100:5256';
+  // static const String baseUrl = '$serverUrl/api';
   
   // Para producción (cuando deployes el API):
-  // static const String baseUrl = 'https://tu-api.com/api';
+  // static const String serverUrl = 'https://tu-api.com';
+  // static const String baseUrl = '$serverUrl/api';
 
   static const Duration timeout = Duration(seconds: 30);
   
