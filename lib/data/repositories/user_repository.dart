@@ -1,7 +1,8 @@
 import 'package:drift/drift.dart';
-import 'package:quickmind/data/api/user_api.dart';
-import 'package:quickmind/data/db/app_database.dart';
-import 'package:quickmind/storage/session_storage.dart';
+import '../api/user_api.dart';
+import '../db/app_database.dart';
+import '../models/auth_models.dart' as api_models;
+import '../../storage/session_storage.dart';
 
 class UserRepository {
   final UserApi api;
@@ -18,33 +19,77 @@ class UserRepository {
     // Guardar en BD local
     await db.into(db.users).insertOnConflictUpdate(
       UsersCompanion.insert(
-        id: data['id'],
-        email: data['email'],
-        nickname: data['nickname'],
-        name: Value(data['name']),
-        country: Value(data['country']),
-        city: Value(data['city']),
-        birthDate: const Value(null),
-        gender: const Value(null),
-        avatarPath: const Value(null),
+        id: data.userId,
+        email: data.email,
+        nickname: data.nickname,
       ),
     );
 
     // Guardar sesión
     await SessionStorage.saveSession(
-      userId: data['id'],
-      isGuest: false,
+      userId: data.userId,
+      isGuest: data.isGuest,
     );
   }
 
-  Future<User?> getCurrentUser() async {
+  Future<api_models.User?> getCurrentUser() async {
     final userId = await SessionStorage.getUserId();
     if (userId == null) return null;
 
-    final query = await (db.select(db.users)
-          ..where((tbl) => tbl.id.equals(userId)))
-        .getSingleOrNull();
+    // Intentar obtener de la API primero
+    try {
+      final user = await api.getCurrentUser(userId);
+      
+      // Actualizar en BD local
+      await db.into(db.users).insertOnConflictUpdate(
+        UsersCompanion.insert(
+          id: user.id,
+          email: user.email,
+          nickname: user.nickname,
+          name: Value(user.name),
+          country: Value(user.country),
+          city: Value(user.city),
+        ),
+      );
+      
+      return user;
+    } catch (e) {
+      // Si falla, obtener de BD local
+      final query = await (db.select(db.users)
+            ..where((tbl) => tbl.id.equals(userId)))
+          .getSingleOrNull();
+      
+      if (query == null) return null;
+      
+      return api_models.User(
+        id: query.id,
+        email: query.email,
+        nickname: query.nickname,
+        name: query.name,
+        country: query.country,
+        city: query.city,
+        birthDate: query.birthDate != null ? DateTime.tryParse(query.birthDate!) : null,
+        gender: query.gender,
+        avatarPath: query.avatarPath,
+      );
+    }
+  }
 
-    return query;
+  Future<api_models.User> updateProfile(String userId, {String? name, String? country, String? city}) async {
+    final user = await api.updateProfile(userId, name: name, country: country, city: city);
+    
+    // Actualizar en BD local
+    await db.into(db.users).insertOnConflictUpdate(
+      UsersCompanion.insert(
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname,
+        name: Value(user.name),
+        country: Value(user.country),
+        city: Value(user.city),
+      ),
+    );
+    
+    return user;
   }
 }

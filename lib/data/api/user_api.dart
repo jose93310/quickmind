@@ -1,44 +1,30 @@
+import 'package:dio/dio.dart';
+import '../models/auth_models.dart';
+import 'auth_api.dart';
+
 class UserApi {
-  Future<Map<String, dynamic>> login(String user, String password) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return {
-      'id': 'user-$user',
-      'email': '$user@example.com',
-      'nickname': user,
-      'name': 'Nombre de $user',
-      'country': 'VE',
-      'city': 'Caracas',
-    };
+  final Dio _dio;
+
+  UserApi(this._dio);
+
+  Future<LoginResponse> login(String email, String password) async {
+    // Delegar a AuthApi para mantener compatibilidad
+    final authApi = AuthApi(_dio);
+    return authApi.login(email, password);
   }
 
-  Future<Map<String, dynamic>> register({
-    required String email,
-    required String nickname,
-    required String password,
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return {
-      'id': 'user-$nickname',
-      'email': email,
-      'nickname': nickname,
-      'name': null,
-      'country': null,
-      'city': null,
-    };
+  Future<LoginResponse> register(String email, String nickname, String password) async {
+    final authApi = AuthApi(_dio);
+    return authApi.register(email, nickname, password);
   }
 
-  Future<Map<String, dynamic>> updateProfile({
-    required String userId,
-    String? name,
-    String? country,
-    String? city,
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return {
-      'id': userId,
-      'name': name,
-      'country': country,
-      'city': city,
-    };
+  Future<User> getCurrentUser(String userId) async {
+    final authApi = AuthApi(_dio);
+    return authApi.getProfile(userId);
+  }
+
+  Future<User> updateProfile(String userId, {String? name, String? country, String? city}) async {
+    final authApi = AuthApi(_dio);
+    return authApi.updateProfile(userId, name: name, country: country, city: city);
   }
 }

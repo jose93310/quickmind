@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:drift/drift.dart' show Value;
-import 'package:quickmind/data/db/app_database.dart';
+import 'package:quickmind/data/models/auth_models.dart' as api_models;
 import 'package:quickmind/data/repositories/user_repository.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -16,7 +15,7 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  User? user;
+  api_models.User? user;
   bool isLoading = true;
 
   final _nameCtrl = TextEditingController();
@@ -45,18 +44,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _save() async {
     if (user == null) return;
 
-    final updated = user!.copyWith(
-      name: Value(_nameCtrl.text.isEmpty ? null : _nameCtrl.text),
-      country: Value(_countryCtrl.text.isEmpty ? null : _countryCtrl.text),
-      city: Value(_cityCtrl.text.isEmpty ? null : _cityCtrl.text),
-    );
+    try {
+      await widget.userRepository.updateProfile(
+        user!.id,
+        name: _nameCtrl.text.isEmpty ? null : _nameCtrl.text,
+        country: _countryCtrl.text.isEmpty ? null : _countryCtrl.text,
+        city: _cityCtrl.text.isEmpty ? null : _cityCtrl.text,
+      );
 
-    await widget.userRepository.db
-        .into(widget.userRepository.db.users)
-        .insertOnConflictUpdate(updated.toCompanion(true));
-
-    if (!mounted) return;
-    Navigator.of(context).pop(true);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al guardar: $e')),
+      );
+    }
   }
 
   @override

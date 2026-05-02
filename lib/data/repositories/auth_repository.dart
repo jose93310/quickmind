@@ -1,67 +1,70 @@
-import 'package:drift/drift.dart';
-import 'package:quickmind/data/api/user_api.dart';
-import 'package:quickmind/data/db/app_database.dart';
-import 'package:quickmind/storage/session_storage.dart';
+import '../api/auth_api.dart';
+import '../db/app_database.dart';
+import '../models/auth_models.dart';
+import '../../storage/session_storage.dart';
 
 class AuthRepository {
-  final UserApi api;
-  final AppDatabase db;
+  final AuthApi _api;
+  final AppDatabase _db;
 
   AuthRepository({
-    required this.api,
-    required this.db,
-  });
+    required AuthApi api,
+    required AppDatabase db,
+  })  : _api = api,
+        _db = db;
 
-  Future<void> login(String user, String password) async {
-    final data = await api.login(user, password);
-
-    await db.into(db.users).insertOnConflictUpdate(
-      UsersCompanion.insert(
-        id: data['id'],
-        email: data['email'],
-        nickname: data['nickname'],
-        name: data['name'] == null ? const Value.absent() : Value(data['name']),
-        country: data['country'] == null
-            ? const Value.absent()
-            : Value(data['country']),
-        city: data['city'] == null
-            ? const Value.absent()
-            : Value(data['city']),
-      ),
-    );
-
-    await SessionStorage.saveSession(
-      userId: data['id'],
-      isGuest: false,
-    );
+  Future<LoginResponse> login(String email, String password) async {
+    final response = await _api.login(email, password);
+    await _saveUserAndSession(response);
+    return response;
   }
 
-  Future<void> register({
+  Future<LoginResponse> register({
     required String email,
     required String nickname,
     required String password,
   }) async {
-    final data = await api.register(
-      email: email,
-      nickname: nickname,
-      password: password,
-    );
+    final response = await _api.register(email, nickname, password);
+    await _saveUserAndSession(response);
+    return response;
+  }
 
-    await db.into(db.users).insertOnConflictUpdate(
-      UsersCompanion.insert(
-        id: data['id'],
-        email: data['email'],
-        nickname: data['nickname'],
-      ),
-    );
-
-    await SessionStorage.saveSession(
-      userId: data['id'],
-      isGuest: false,
-    );
+  Future<LoginResponse> guestLogin(String nickname) async {
+    final response = await _api.guestLogin(nickname);
+    await _saveUserAndSession(response);
+    return response;
   }
 
   Future<void> logout() async {
     await SessionStorage.clearSession();
+  }
+
+  Future<bool> isLoggedIn() async {
+    return await SessionStorage.isLoggedIn();
+  }
+
+  Future<bool> isGuest() async {
+    return await SessionStorage.isGuest();
+  }
+
+  Future<String?> getCurrentUserId() async {
+    return await SessionStorage.getUserId();
+  }
+
+  Future<void> _saveUserAndSession(LoginResponse response) async {
+    // Guardar en base de datos local
+    await _db.into(_db.users).insertOnConflictUpdate(
+      UsersCompanion.insert(
+        id: response.userId,
+        email: response.email,
+        nickname: response.nickname,
+      ),
+    );
+
+    // Guardar sesión
+    await SessionStorage.saveSession(
+      userId: response.userId,
+      isGuest: response.isGuest,
+    );
   }
 }

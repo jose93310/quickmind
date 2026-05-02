@@ -1,8 +1,7 @@
 import 'dart:io';
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:quickmind/data/db/app_database.dart';
+import 'package:quickmind/data/models/auth_models.dart' as api_models;
 import 'package:quickmind/data/repositories/user_repository.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -18,7 +17,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  User? user;
+  api_models.User? user;
   bool isLoading = true;
 
   @override
@@ -40,41 +39,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final file = await picker.pickImage(source: ImageSource.gallery);
     if (file == null || user == null) return;
 
-    final updated = user!.copyWith(
-      avatarPath: Value(file.path),
-    );
-
-    await widget.userRepository.db
-        .into(widget.userRepository.db.users)
-        .insertOnConflictUpdate(
-      UsersCompanion(
-        id: Value(updated.id),
-        email: Value(updated.email),
-        nickname: Value(updated.nickname),
-        name: updated.name == null
-            ? const Value.absent()
-            : Value(updated.name),
-        country: updated.country == null
-            ? const Value.absent()
-            : Value(updated.country),
-        city: updated.city == null
-            ? const Value.absent()
-            : Value(updated.city),
-        birthDate: updated.birthDate == null
-            ? const Value.absent()
-            : Value(updated.birthDate),
-        gender: updated.gender == null
-            ? const Value.absent()
-            : Value(updated.gender),
-        avatarPath: updated.avatarPath == null
-            ? const Value.absent()
-            : Value(updated.avatarPath),
-      ),
-    );
-
-    setState(() {
-      user = updated;
-    });
+    // Actualizar avatar mediante el repositorio
+    try {
+      final updated = await widget.userRepository.updateProfile(
+        user!.id,
+        name: user!.name,
+        country: user!.country,
+        city: user!.city,
+      );
+      
+      setState(() {
+        user = updated;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al actualizar: $e')),
+      );
+    }
   }
 
   @override

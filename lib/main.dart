@@ -5,14 +5,16 @@ import 'l10n/app_localizations.dart';
 import 'presentation/screens/welcome/welcome_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
 
+import 'core/constants/api_constants.dart';
 import 'data/db/app_database.dart';
-import 'data/api/user_api.dart';
+import 'data/api/api_client.dart';
+import 'data/api/auth_api.dart';
+import 'data/api/game_api.dart';
 import 'data/api/stats_api.dart';
 import 'data/api/rounds_api.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/stats_repository.dart';
 import 'data/repositories/rounds_repository.dart';
-import 'data/db/daos/user_dao.dart';
 import 'data/db/daos/stats_dao.dart';
 import 'data/db/daos/rounds_dao.dart';
 
@@ -21,13 +23,25 @@ import 'storage/theme_storage.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Base de datos local
   final db = AppDatabase();
 
-  final userApi = UserApi();
+  // Cliente HTTP configurado
+  final apiClient = ApiClient(ApiConstants.baseUrl);
+  final dio = apiClient.client;
+  
+  // Configurar timeouts y opciones
+  dio.options.connectTimeout = ApiConstants.timeout;
+  dio.options.receiveTimeout = ApiConstants.timeout;
+
+  // APIs
+  final authApi = AuthApi(dio);
+  final gameApi = GameApi(dio);
   final statsApi = StatsApi();
   final roundsApi = RoundsApi();
 
-  final authRepository = AuthRepository(api: userApi, db: db);
+  // Repositories
+  final authRepository = AuthRepository(api: authApi, db: db);
   final statsRepository = StatsRepository(dao: StatsDao(db), api: statsApi);
   final roundsRepository = RoundsRepository(dao: RoundsDao(db), api: roundsApi);
 
@@ -36,6 +50,7 @@ void main() async {
       authRepository: authRepository,
       statsRepository: statsRepository,
       roundsRepository: roundsRepository,
+      gameApi: gameApi,
     ),
   );
 }
@@ -44,12 +59,14 @@ class QuickMindApp extends StatefulWidget {
   final AuthRepository authRepository;
   final StatsRepository statsRepository;
   final RoundsRepository roundsRepository;
+  final GameApi gameApi;
 
   const QuickMindApp({
     super.key,
     required this.authRepository,
     required this.statsRepository,
     required this.roundsRepository,
+    required this.gameApi,
   });
 
   @override
