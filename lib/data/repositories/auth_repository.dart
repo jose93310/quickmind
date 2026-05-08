@@ -65,6 +65,7 @@ class AuthRepository {
     await SessionStorage.saveSession(
       userId: response.userId,
       isGuest: response.isGuest,
+      nickname: response.nickname,
     );
   }
 }

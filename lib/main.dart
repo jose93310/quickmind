@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
 
 import 'l10n/app_localizations.dart';
 import 'presentation/screens/welcome/welcome_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
 
 import 'core/constants/api_constants.dart';
+import 'core/theme/theme_provider.dart';
 import 'data/db/app_database.dart';
 import 'data/api/api_client.dart';
 import 'data/api/auth_api.dart';
 import 'data/api/game_api.dart';
+import 'data/api/friend_api.dart';
+import 'data/api/chat_api.dart';
 import 'data/api/stats_api.dart';
 import 'data/api/rounds_api.dart';
 import 'data/repositories/auth_repository.dart';
@@ -19,8 +23,6 @@ import 'data/services/game_hub_service.dart';
 import 'data/services/game_service.dart';
 import 'data/db/daos/stats_dao.dart';
 import 'data/db/daos/rounds_dao.dart';
-
-import 'storage/theme_storage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +41,8 @@ void main() async {
   // APIs
   final authApi = AuthApi(dio);
   final gameApi = GameApi(dio);
+  final friendApi = FriendApi(dio);
+  final chatApi = ChatApi(dio);
   final statsApi = StatsApi();
   final roundsApi = RoundsApi();
 
@@ -51,15 +55,21 @@ void main() async {
   final hubService = GameHubService();
   final gameService = GameService(
     gameApi: gameApi,
+    friendApi: friendApi,
+    chatApi: chatApi,
     hubService: hubService,
   );
 
   runApp(
-    QuickMindApp(
-      authRepository: authRepository,
-      statsRepository: statsRepository,
-      roundsRepository: roundsRepository,
-      gameService: gameService,
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: QuickMindApp(
+        authRepository: authRepository,
+        statsRepository: statsRepository,
+        roundsRepository: roundsRepository,
+        gameService: gameService,
+        authApi: authApi,
+      ),
     ),
   );
 }
@@ -69,6 +79,7 @@ class QuickMindApp extends StatefulWidget {
   final StatsRepository statsRepository;
   final RoundsRepository roundsRepository;
   final GameService gameService;
+  final AuthApi authApi;
 
   const QuickMindApp({
     super.key,
@@ -76,6 +87,7 @@ class QuickMindApp extends StatefulWidget {
     required this.statsRepository,
     required this.roundsRepository,
     required this.gameService,
+    required this.authApi,
   });
 
   @override
@@ -83,19 +95,6 @@ class QuickMindApp extends StatefulWidget {
 }
 
 class _QuickMindAppState extends State<QuickMindApp> {
-  bool isDarkMode = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTheme();
-  }
-
-  Future<void> _loadTheme() async {
-    final savedTheme = await ThemeStorage.loadThemeMode();
-    setState(() => isDarkMode = savedTheme);
-  }
-
   @override
   void dispose() {
     widget.gameService.dispose();
@@ -104,6 +103,8 @@ class _QuickMindAppState extends State<QuickMindApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       locale: const Locale('es'),
@@ -115,9 +116,7 @@ class _QuickMindAppState extends State<QuickMindApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
 
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
-      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      theme: themeProvider.themeData,
 
       home: WelcomeScreen(
         authRepository: widget.authRepository,
@@ -129,6 +128,7 @@ class _QuickMindAppState extends State<QuickMindApp> {
               statsRepository: widget.statsRepository,
               roundsRepository: widget.roundsRepository,
               gameService: widget.gameService,
+              authApi: widget.authApi,
             ),
       },
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../data/api/auth_api.dart';
 import '../../../data/services/game_service.dart';
 import '../../../data/repositories/stats_repository.dart';
 import '../../../data/repositories/rounds_repository.dart';
@@ -6,17 +7,21 @@ import '../../../storage/session_storage.dart';
 import '../stats/stats_screen.dart';
 import '../rounds/rounds_history_screen.dart';
 import '../ready/ready_to_play_screen.dart';
+import '../friends/friends_screen.dart';
+import '../settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final StatsRepository statsRepository;
   final RoundsRepository roundsRepository;
   final GameService gameService;
+  final AuthApi? authApi;
 
   const HomeScreen({
     super.key,
     required this.statsRepository,
     required this.roundsRepository,
     required this.gameService,
+    this.authApi,
   });
 
   @override
@@ -36,12 +41,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadUserData() async {
     final id = await SessionStorage.getUserId();
-    // Por simplicidad, usamos el ID como nickname si no hay otro
+    final nick = await SessionStorage.getNickname();
     setState(() {
       userId = id ?? 'unknown';
-      nickname = id?.startsWith('guest_') == true 
+      nickname = nick ?? (id?.startsWith('guest_') == true 
           ? 'Invitado' 
-          : id ?? 'Usuario';
+          : 'Usuario');
       isLoading = false;
     });
   }
@@ -61,7 +66,12 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              // TODO: Settings screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SettingsScreen(authApi: widget.authApi),
+                ),
+              );
             },
           ),
         ],
@@ -105,6 +115,26 @@ class _HomeScreenState extends State<HomeScreen> {
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
+            ),
+            
+            const SizedBox(height: 16),
+
+            // Amigos
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FriendsScreen(
+                      gameService: widget.gameService,
+                      userId: userId!,
+                      nickname: nickname!,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.people),
+              label: const Text('Amigos'),
             ),
             
             const SizedBox(height: 16),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../data/services/game_service.dart';
 import '../../../data/models/game_models.dart';
 import '../game/lobby_screen.dart';
+import '../game/game_browser_screen.dart';
+import '../game/game_config_screen.dart';
 import 'join_game_dialog.dart';
 
 class ReadyToPlayScreen extends StatefulWidget {
@@ -22,44 +24,42 @@ class ReadyToPlayScreen extends StatefulWidget {
 
 class _ReadyToPlayScreenState extends State<ReadyToPlayScreen> {
   bool isLoading = false;
+  List<PublicGame> _myGames = [];
+  bool _loadingGames = true;
 
-  Future<void> _createGame() async {
-    setState(() => isLoading = true);
-    
+  @override
+  void initState() {
+    super.initState();
+    _loadMyGames();
+  }
+
+  Future<void> _loadMyGames() async {
     try {
-      // Crear partida con configuración por defecto
-      final game = await widget.gameService.createGame(
-        hostId: widget.userId,
-        maxPlayers: 4,
-        totalRounds: 5,
-        timePerRound: 120,
-        letterMode: LetterMode.random.index,
-        validationType: ValidationType.voting.index,
-        categoryIds: [1, 2, 3, 4, 5], // Algunas categorías por defecto
-      );
-
-      if (!mounted) return;
-
-      // Navegar al lobby
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => LobbyScreen(
-            gameService: widget.gameService,
-            gameId: game.id,
-            gameCode: game.code,
-            userId: widget.userId,
-            isHost: true,
-          ),
-        ),
-      );
+      final publicGames = await widget.gameService.getPublicGames();
+      final myGames = publicGames
+          .where((g) => g.status != 2 && 
+                         g.hostNickname == widget.nickname)
+          .toList();
+      setState(() {
+        _myGames = myGames;
+        _loadingGames = false;
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al crear partida: $e')),
-      );
-    } finally {
-      setState(() => isLoading = false);
+      setState(() => _loadingGames = false);
     }
+  }
+
+  void _createGame() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GameConfigScreen(
+          gameService: widget.gameService,
+          userId: widget.userId,
+          nickname: widget.nickname,
+        ),
+      ),
+    ).then((_) => _loadMyGames());
   }
 
   Future<void> _joinGame() async {
@@ -70,14 +70,12 @@ class _ReadyToPlayScreenState extends State<ReadyToPlayScreen> {
 
     if (result != null && result.isNotEmpty) {
       setState(() => isLoading = true);
-      
+
       try {
-        // Unirse a la partida
         final game = await widget.gameService.joinGame(result, widget.userId);
 
         if (!mounted) return;
 
-        // Navegar al lobby
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -91,99 +89,190 @@ class _ReadyToPlayScreenState extends State<ReadyToPlayScreen> {
           ),
         );
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al unirse: $e')),
         );
       } finally {
-        setState(() => isLoading = false);
+        if (mounted) setState(() => isLoading = false);
       }
     }
   }
 
+  void _browsePublicGames() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GameBrowserScreen(
+          gameService: widget.gameService,
+          userId: widget.userId,
+          nickname: widget.nickname,
+        ),
+      ),
+    );
+  }
+
+  void _joinExistingGame(PublicGame game) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LobbyScreen(
+          gameService: widget.gameService,
+          gameId: game.id,
+          gameCode: game.code,
+          userId: widget.userId,
+          isHost: false,
+          gameName: game.name,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Listo para jugar')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (isLoading)
-              const Center(child: CircularProgressIndicator())
-            else ...[
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _createGame,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Crear partida'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // PARTIDAS EXISTENTES
+                  if (!_loadingGames && _myGames.isNotEmpty) ...[
+                    Text(
+                      'Tus partidas activas',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ..._myGames.map((game) => Card(
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: game.status == 1
+                                  ? Colors.green
+                                  : Colors.orange,
+                              child: Icon(
+                                game.status == 1
+                                    ? Icons.play_arrow
+                                    : Icons.hourglass_empty,
+                                color: Colors.white,
+                              ),
+                            ),
+                            title: Text(
+                              game.name != null && game.name!.isNotEmpty
+                                  ? (game.name!.length > 10 
+                                      ? '${game.name!.substring(0, 10)}...' 
+                                      : game.name!)
+                                  : 'Partida ${game.code}',
+                              style: const TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Código: ${game.code}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                if (game.scheduledStart != null)
+                                  Text(
+                                    'Inicio: ${_formatDateTime(game.scheduledStart!)}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                Text(
+                                  '${game.currentPlayers}/${game.maxPlayers} jugadores • ${game.totalRounds} rondas • ${game.statusText}',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                            isThreeLine: true,
+                            trailing: const Icon(Icons.arrow_forward_ios),
+                            onTap: () => _joinExistingGame(game),
+                          ),
+                        )),
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // LOADING
+                  if (_loadingGames)
+                    const Center(child: CircularProgressIndicator()),
+
+                  // BOTÓN CREAR NUEVA PARTIDA
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _myGames.length >= 5 ? null : _createGame,
+                      icon: const Icon(Icons.add),
+                      label: Text(_myGames.length >= 5
+                          ? 'Máximo 5 partidas activas'
+                          : 'Crear nueva partida'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _joinGame,
-                  icon: const Icon(Icons.login),
-                  label: const Text('Unirse a partida'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  if (_myGames.length >= 5)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Termina una partida antes de crear otra',
+                        style: TextStyle(
+                            color: theme.colorScheme.error, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+
+                  // UNIRSE POR CÓDIGO
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _joinGame,
+                      icon: const Icon(Icons.vpn_key),
+                      label: const Text('Unirse por código'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 16),
+
+                  // EXPLORAR PÚBLICAS
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _browsePublicGames,
+                      icon: const Icon(Icons.public),
+                      label: const Text('Explorar partidas públicas'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ],
-        ),
-      ),
+            ),
     );
   }
-}
 
-// Diálogo para ingresar código
-class JoinGameDialog extends StatefulWidget {
-  const JoinGameDialog({super.key});
-
-  @override
-  State<JoinGameDialog> createState() => _JoinGameDialogState();
-}
-
-class _JoinGameDialogState extends State<JoinGameDialog> {
-  final _codeCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _codeCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Unirse a Partida'),
-      content: TextField(
-        controller: _codeCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Código de partida',
-          hintText: 'Ej: 123456',
-          prefixIcon: Icon(Icons.numbers),
-        ),
-        keyboardType: TextInputType.number,
-        maxLength: 6,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, _codeCtrl.text),
-          child: const Text('Unirse'),
-        ),
-      ],
-    );
+  String _formatDateTime(DateTime dt) {
+    final day = dt.day.toString().padLeft(2, '0');
+    final month = dt.month.toString().padLeft(2, '0');
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final minute = dt.minute.toString().padLeft(2, '0');
+    return '$day/$month/${dt.year} $hour:$minute';
   }
 }

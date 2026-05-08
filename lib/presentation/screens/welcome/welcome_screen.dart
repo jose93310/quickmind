@@ -30,12 +30,10 @@ class WelcomeScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'QuickMind',
-                  style: theme.textTheme.displayMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color.primary,
-                  ),
+                Image.asset(
+                  'assets/images/quickmind_logo.png',
+                  width: 200,
+                  height: 200,
                 ),
 
                 const SizedBox(height: 40),
@@ -52,6 +50,7 @@ class WelcomeScreen extends StatelessWidget {
                       await SessionStorage.saveSession(
                         userId: guestId,
                         isGuest: true,
+                        nickname: guestNickname,
                       );
 
                       if (!context.mounted) return;

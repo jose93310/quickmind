@@ -4,6 +4,8 @@ import '../../../data/models/game_models.dart';
 import '../../../data/services/game_service.dart';
 import '../../../data/services/game_hub_service.dart';
 import '../rounds/stop_round_screen.dart';
+import '../chat/chat_widget.dart';
+import 'game_config_screen.dart';
 
 class LobbyScreen extends StatefulWidget {
   final GameService gameService;
@@ -11,6 +13,7 @@ class LobbyScreen extends StatefulWidget {
   final String gameCode;
   final String userId;
   final bool isHost;
+  final String? gameName;
 
   const LobbyScreen({
     super.key,
@@ -19,6 +22,7 @@ class LobbyScreen extends StatefulWidget {
     required this.gameCode,
     required this.userId,
     required this.isHost,
+    this.gameName,
   });
 
   @override
@@ -114,6 +118,23 @@ class _LobbyScreenState extends State<LobbyScreen> {
     );
   }
 
+  void _openChat() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: ChatWidget(
+          gameService: widget.gameService,
+          currentUserId: widget.userId,
+          gameId: widget.gameId,
+          title: 'Chat de Sala',
+          showReactions: true,
+        ),
+      ),
+    );
+  }
+
   Future<void> _startGame() async {
     try {
       setState(() => isLoading = true);
@@ -194,11 +215,18 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lobby de Partida'),
+        title: Text(widget.gameName != null && widget.gameName!.isNotEmpty
+            ? widget.gameName!
+            : 'Lobby de Partida'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: _leaveGame,
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openChat(),
+        icon: const Icon(Icons.chat),
+        label: const Text('Chat'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -257,11 +285,42 @@ class _LobbyScreenState extends State<LobbyScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Configuración',
-                      style: theme.textTheme.titleSmall,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Configuración',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        if (widget.isHost)
+                          TextButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => GameConfigScreen(
+                                    gameService: widget.gameService,
+                                    userId: widget.userId,
+                                    nickname: '',
+                                    editGameId: widget.gameId,
+                                    editGameName: widget.gameName,
+                                    editMaxPlayers: game?.maxPlayers,
+                                    editTotalRounds: game?.totalRounds,
+                                    editTimePerRound: game?.timePerRound,
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.edit, size: 16),
+                            label: const Text('Editar', style: TextStyle(fontSize: 12)),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 8),
+                    if (widget.gameName != null && widget.gameName!.isNotEmpty)
+                      _buildConfigRow('Nombre:', widget.gameName!),
+                    if (game?.scheduledStart != null)
+                      _buildConfigRow('Inicio:', _formatDateTime(game!.scheduledStart!)),
                     _buildConfigRow('Rondas:', '${game?.totalRounds ?? 0}'),
                     _buildConfigRow('Tiempo por ronda:', '${game?.timePerRound ?? 0}s'),
                     _buildConfigRow('Jugadores:', '${players.length}/${game?.maxPlayers ?? 0}'),
@@ -389,5 +448,13 @@ class _LobbyScreenState extends State<LobbyScreen> {
         ],
       ),
     );
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final day = dt.day.toString().padLeft(2, '0');
+    final month = dt.month.toString().padLeft(2, '0');
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final minute = dt.minute.toString().padLeft(2, '0');
+    return '$day/$month/${dt.year} $hour:$minute';
   }
 }

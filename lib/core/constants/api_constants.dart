@@ -1,18 +1,13 @@
 class ApiConstants {
-  // Base URL sin /api (para SignalR)
-  static const String serverUrl = 'http://localhost:5256';
+  // ===== CONFIGURACIÓN DE ENTORNO =====
+  // Cambia esta URL según el entorno:
+  // - Emulador Android: http://10.0.2.2:5256
+  // - Dispositivo físico (misma red): http://TU_IP_LOCAL:5256
+  // - Producción (Render): https://quickmind-api.onrender.com
   
-  // Para desarrollo local (emulador Android usa 10.0.2.2, iOS usa localhost)
+  static const String serverUrl = 'https://quickmind-api.onrender.com';
   static const String baseUrl = '$serverUrl/api';
   
-  // Para dispositivo físico, usa tu IP local:
-  // static const String serverUrl = 'http://192.168.1.100:5256';
-  // static const String baseUrl = '$serverUrl/api';
-  
-  // Para producción (cuando deployes el API):
-  // static const String serverUrl = 'https://tu-api.com';
-  // static const String baseUrl = '$serverUrl/api';
-
   static const Duration timeout = Duration(seconds: 30);
   
   // Endpoints
@@ -24,6 +19,7 @@ class ApiConstants {
   static const String games = '/games';
   static const String joinGame = '/games/join';
   static const String categories = '/games/categories';
+  static const String publicGames = '/games/public';
   
   static String gameById(String id) => '/games/$id';
   static String gameByCode(String code) => '/games/code/$code';
@@ -31,4 +27,25 @@ class ApiConstants {
   static String stopRound(String id) => '/games/$id/stop';
   static const String submitAnswer = '/games/answers';
   static const String vote = '/games/vote';
+
+  // Friends endpoints
+  static const String friends = '/friends';
+  static const String friendRequest = '/friends/request';
+  static const String respondFriendRequest = '/friends/respond';
+  static String friendsList(String userId) => '/friends?userId=$userId';
+  static String friendRequests(String userId) => '/friends/requests?userId=$userId';
+  static String searchUsers(String userId, String query) => '/friends/search?userId=$userId&query=$query';
+  static String removeFriend(String userId, String friendId) => '/friends/$friendId?userId=$userId';
+
+  // Chat endpoints
+  static const String chatGame = '/chat/game';
+  static const String chatDirect = '/chat/direct';
+  static const String chatReaction = '/chat/reaction';
+  static String chatGameMessages(String gameId) => '/chat/game/$gameId';
+  static String chatConversation(String userId1, String userId2) => '/chat/direct?userId1=$userId1&userId2=$userId2';
+  static String chatUnread(String userId) => '/chat/unread/$userId';
+  static String chatRead(String messageId) => '/chat/read/$messageId';
+
+  // Upload endpoints
+  static const String uploadMedia = '/upload/media';
 }

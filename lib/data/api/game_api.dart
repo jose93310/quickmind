@@ -15,6 +15,8 @@ class GameApi {
     required int letterMode,
     required int validationType,
     required List<int> categoryIds,
+    bool isPublic = false,
+    String? gameName,
   }) async {
     try {
       final response = await _dio.post(
@@ -27,6 +29,8 @@ class GameApi {
           'letterMode': letterMode,
           'validationType': validationType,
           'categoryIds': categoryIds,
+          'isPublic': isPublic,
+          if (gameName != null && gameName.isNotEmpty) 'name': gameName,
         },
       );
       return Game.fromJson(response.data);
@@ -138,6 +142,49 @@ class GameApi {
       return (response.data as List)
           .map((c) => Category.fromJson(c))
           .toList();
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<List<PublicGame>> getPublicGames() async {
+    try {
+      final response = await _dio.get(ApiConstants.publicGames);
+      return (response.data as List)
+          .map((g) => PublicGame.fromJson(g))
+          .toList();
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<Game> updateGameSettings({
+    required String gameId,
+    required String hostId,
+    required int maxPlayers,
+    required int totalRounds,
+    required int timePerRound,
+    bool isPublic = false,
+    String? gameName,
+    DateTime? scheduledStart,
+  }) async {
+    try {
+      final response = await _dio.put(
+        '${ApiConstants.gameById(gameId)}/settings?hostId=$hostId',
+        data: {
+          'hostId': hostId,
+          'maxPlayers': maxPlayers,
+          'totalRounds': totalRounds,
+          'timePerRound': timePerRound,
+          'letterMode': 0,
+          'validationType': 1,
+          'categoryIds': [],
+          'isPublic': isPublic,
+          if (gameName != null && gameName.isNotEmpty) 'name': gameName,
+          if (scheduledStart != null) 'scheduledStart': scheduledStart.toIso8601String(),
+        },
+      );
+      return Game.fromJson(response.data);
     } on DioException catch (e) {
       throw _handleError(e);
     }
