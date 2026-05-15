@@ -122,14 +122,19 @@ class _LobbyScreenState extends State<LobbyScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: ChatWidget(
-          gameService: widget.gameService,
-          currentUserId: widget.userId,
-          gameId: widget.gameId,
-          title: 'Chat de Sala',
-          showReactions: true,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: ChatWidget(
+            gameService: widget.gameService,
+            currentUserId: widget.userId,
+            gameId: widget.gameId,
+            title: 'Chat de Sala',
+            showReactions: true,
+          ),
         ),
       ),
     );

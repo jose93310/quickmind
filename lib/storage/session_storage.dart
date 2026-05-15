@@ -4,20 +4,24 @@ class SessionStorage {
   static const _keyLoggedIn = 'logged_in';
   static const _keyUserId = 'user_id';
   static const _keyNickname = 'nickname';
+  static const _keyEmail = 'email';
+  static const _keyToken = 'jwt_token';
   static const _keyIsGuest = 'is_guest';
 
   static Future<void> saveSession({
     required String userId,
     required bool isGuest,
     String? nickname,
+    String? email,
+    String? token,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyLoggedIn, true);
     await prefs.setString(_keyUserId, userId);
     await prefs.setBool(_keyIsGuest, isGuest);
-    if (nickname != null) {
-      await prefs.setString(_keyNickname, nickname);
-    }
+    if (nickname != null) await prefs.setString(_keyNickname, nickname);
+    if (email != null) await prefs.setString(_keyEmail, email);
+    if (token != null) await prefs.setString(_keyToken, token);
   }
 
   static Future<void> clearSession() async {
@@ -25,6 +29,8 @@ class SessionStorage {
     await prefs.remove(_keyLoggedIn);
     await prefs.remove(_keyUserId);
     await prefs.remove(_keyNickname);
+    await prefs.remove(_keyEmail);
+    await prefs.remove(_keyToken);
     await prefs.remove(_keyIsGuest);
   }
 
@@ -46,6 +52,16 @@ class SessionStorage {
   static Future<String?> getNickname() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyNickname);
+  }
+
+  static Future<String?> getEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyEmail);
+  }
+
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyToken);
   }
 
   static Future<void> clear() async {

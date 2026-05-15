@@ -61,11 +61,13 @@ class AuthRepository {
       ),
     );
 
-    // Guardar sesión
+    // Guardar sesión con token para persistencia
     await SessionStorage.saveSession(
       userId: response.userId,
       isGuest: response.isGuest,
       nickname: response.nickname,
+      email: response.email,
+      token: response.token,
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'l10n/app_localizations.dart';
 import 'presentation/screens/welcome/welcome_screen.dart';
 import 'presentation/screens/home/home_screen.dart';
+import 'storage/session_storage.dart';
 
 import 'core/constants/api_constants.dart';
 import 'core/theme/theme_provider.dart';
@@ -60,6 +61,11 @@ void main() async {
     hubService: hubService,
   );
 
+  // Verificar si hay sesión guardada
+  final isLoggedIn = await SessionStorage.isLoggedIn();
+  final savedUserId = await SessionStorage.getUserId();
+  final savedNickname = await SessionStorage.getNickname();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -69,6 +75,9 @@ void main() async {
         roundsRepository: roundsRepository,
         gameService: gameService,
         authApi: authApi,
+        initialIsLoggedIn: isLoggedIn,
+        initialUserId: savedUserId,
+        initialNickname: savedNickname,
       ),
     ),
   );
@@ -80,6 +89,9 @@ class QuickMindApp extends StatefulWidget {
   final RoundsRepository roundsRepository;
   final GameService gameService;
   final AuthApi authApi;
+  final bool initialIsLoggedIn;
+  final String? initialUserId;
+  final String? initialNickname;
 
   const QuickMindApp({
     super.key,
@@ -88,6 +100,9 @@ class QuickMindApp extends StatefulWidget {
     required this.roundsRepository,
     required this.gameService,
     required this.authApi,
+    this.initialIsLoggedIn = false,
+    this.initialUserId,
+    this.initialNickname,
   });
 
   @override
@@ -105,6 +120,21 @@ class _QuickMindAppState extends State<QuickMindApp> {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
+    // Si hay sesión válida, ir directo al Home
+    final startScreen = widget.initialIsLoggedIn && 
+                         widget.initialUserId != null &&
+                         widget.initialUserId!.isNotEmpty
+        ? HomeScreen(
+            statsRepository: widget.statsRepository,
+            roundsRepository: widget.roundsRepository,
+            gameService: widget.gameService,
+            authApi: widget.authApi,
+          )
+        : WelcomeScreen(
+            authRepository: widget.authRepository,
+            gameService: widget.gameService,
+          );
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       locale: const Locale('es'),
@@ -118,10 +148,7 @@ class _QuickMindAppState extends State<QuickMindApp> {
 
       theme: themeProvider.themeData,
 
-      home: WelcomeScreen(
-        authRepository: widget.authRepository,
-        gameService: widget.gameService,
-      ),
+      home: startScreen,
 
       routes: {
         '/home': (_) => HomeScreen(

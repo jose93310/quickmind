@@ -100,6 +100,18 @@ class _ChatWidgetState extends State<ChatWidget> {
     if (text.isEmpty) return;
     _messageCtrl.clear();
 
+    // Agregar mensaje localmente primero (optimistic update)
+    final localMessage = GameMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      gameId: widget.gameId ?? '',
+      senderId: widget.currentUserId,
+      senderNickname: 'Tú',
+      text: text,
+      createdAt: DateTime.now(),
+    );
+    setState(() => _messages.add(localMessage));
+    _scrollToBottom();
+
     try {
       if (widget.gameId != null) {
         await widget.gameService.sendGameMessage(
@@ -108,6 +120,19 @@ class _ChatWidgetState extends State<ChatWidget> {
           text,
         );
       } else if (widget.otherUserId != null) {
+        final chatMsg = ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          senderId: widget.currentUserId,
+          senderNickname: 'Tú',
+          receiverId: widget.otherUserId!,
+          text: text,
+          isRead: false,
+          createdAt: DateTime.now(),
+        );
+        setState(() {
+          _messages.removeLast();
+          _messages.add(chatMsg);
+        });
         await widget.gameService.sendChatMessage(
           widget.currentUserId,
           widget.otherUserId!,
@@ -117,7 +142,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('Error al enviar: $e')),
         );
       }
     }
